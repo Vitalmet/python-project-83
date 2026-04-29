@@ -1,8 +1,12 @@
+import os
+from doctest import load_dotenv
 from flask import Flask
 
+#загружаем переменные окружения из .env
+load_dotenv()
 
 app = Flask(__name__)
-
+app.confing['SECRET_KEY'] = os.getenv('SECRET_KEY', 'default-secret-key-for-dev')
 
 
 
