@@ -1,5 +1,5 @@
 import os
-from doctest import load_dotenv
+from dotenv import load_dotenv
 from flask import Flask
 
 #загружаем переменные окружения из .env
