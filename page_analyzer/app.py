@@ -116,33 +116,22 @@ def add_url():
         return render_template('index.html'), 422
 
     # Нормализация: только нижний регистр
-    normalized_url = url.lower()
+    normalized_url = url.lower().rstrip('/')
 
     conn = get_db_connection()
     cur = conn.cursor()
 
     try:
         # Диагностика: посмотрим, что есть в базе
-        cur.execute('SELECT id, name FROM urls')
-        all_urls = cur.fetchall()
-        print(f"DEBUG: All URLs in DB: {[u['name'] for u in all_urls]}")
-
-        # При поиске проверяем оба варианта (слеш и без слеша)
-        cur.execute('SELECT id FROM urls WHERE name = %s OR name = %s',
-                    (normalized_url, normalized_url.rstrip('/')))
+        cur.execute('SELECT id FROM urls WHERE name = %s', (normalized_url,))
         existing_url = cur.fetchone()
-        print(f"DEBUG: Looking for '{normalized_url}' or '{normalized_url.rstrip('/')}'")
-        print(f"DEBUG: Found: {existing_url}")
 
         if existing_url:
             flash('Страница уже существует', 'info')
             url_id = existing_url['id']
         else:
-            # сохраняем без слеша
-            save_url = normalized_url.rstrip('/')
-            print(f"DEBUG: Saving new URL: {save_url}")
             cur.execute('INSERT INTO urls (name, created_at) VALUES (%s, %s) RETURNING id',
-                        (save_url, datetime.now()))
+                        (normalized_url, datetime.now()))
             conn.commit()
             result = cur.fetchone()
             url_id = result['id'] if result else None
@@ -153,7 +142,6 @@ def add_url():
         return redirect(url_for('show_url', id=url_id))
 
     except Exception as e:
-        print(f"DEBUG ERROR: {e}")
         conn.rollback()
         cur.close()
         conn.close()
