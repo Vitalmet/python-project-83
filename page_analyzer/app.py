@@ -127,16 +127,15 @@ def add_url():
         existing_url = cur.fetchone()
 
         if existing_url:
-            flash('Страница уже существует', 'info')
+            flash('Страница уже существует', 'warning')
             url_id = existing_url['id']
         else:
             cur.execute('INSERT INTO urls (name, created_at) VALUES (%s, %s) RETURNING id',
                         (normalized_url, datetime.now()))
             conn.commit()
             result = cur.fetchone()
-            url_id = result['id'] if result else None
+            url_id = result['id']
             flash('Страница успешно добавлена', 'success')
-            conn.commit()
 
         cur.close()
         conn.close()
@@ -168,7 +167,7 @@ def check_url(id):
     try:
         response = requests.get(url, timeout=10)
         response.raise_for_status()
-        response.encoding = 'utf-8'
+        response.encoding = response.apparent_encoding or 'utf-8'
         status_code = response.status_code
 
         soup = BeautifulSoup(response.text, 'html.parser')
