@@ -148,6 +148,7 @@ def add_url():
         flash('Ошибка при добавлении страницы', 'danger')
         return render_template('index.html'), 500
 
+
 @app.route('/urls/<int:id>/checks', methods=['POST'])
 def check_url(id):
     conn = get_db_connection()
@@ -166,34 +167,33 @@ def check_url(id):
 
     try:
         response = requests.get(url, timeout=10)
-        response.raise_for_status()
+
+        # Проверка на успешный ответ (код 200-399)
+        if response.status_code >= 400:
+            flash('Произошла ошибка при проверке', 'danger')
+            return redirect(url_for('show_url', id=id))
+
+        # Определяем кодировку
         response.encoding = response.apparent_encoding or 'utf-8'
-        status_code = response.status_code
 
         soup = BeautifulSoup(response.text, 'html.parser')
 
+        # Извлекаем данные
         h1 = soup.find('h1').get_text(strip=True) if soup.find('h1') else ''
         title = soup.find('title').get_text(strip=True) if soup.find('title') else ''
-
         description_tag = soup.find('meta', attrs={'name': 'description'})
         description = description_tag.get('content', '').strip() if description_tag else ''
 
-        # Усечение длинных значений
-        h1 = truncate_text(h1, 200)
-        title = truncate_text(title, 200)
-        description = truncate_text(description, 200)
-
+        # Сохраняем проверку
         cur.execute("""
             INSERT INTO url_checks (url_id, status_code, h1, title, description, created_at)
             VALUES (%s, %s, %s, %s, %s, %s)
-            RETURNING id
-        """, (id, status_code, h1, title, description, datetime.now()))
+        """, (id, response.status_code, h1, title, description, datetime.now()))
 
         conn.commit()
-
         flash('Страница успешно проверена', 'success')
 
-    except (requests.RequestException, Exception) as e:
+    except requests.exceptions.RequestException:
         flash('Произошла ошибка при проверке', 'danger')
     finally:
         cur.close()
