@@ -10,76 +10,55 @@ from bs4 import BeautifulSoup
 from urllib.parse import urlparse
 
 # загружаем переменные окружения из .env
-dotenv_path = os.path.join(os.path.dirname(__file__), '..', '.env')
+dotenv_path = os.path.join(os.path.dirname(__file__), "..", ".env")
 load_dotenv(dotenv_path)
 
-template_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'templates'))
+template_dir = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "templates")
+)
 app = Flask(__name__, template_folder=template_dir)
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'default-secret-key-for-dev')
+app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "default-secret-key-for-dev")
 
 
 # функция для соединения с БД
 def get_db_connection():
-    database_url = os.getenv('DATABASE_URL')
+    database_url = os.getenv("DATABASE_URL")
     if not database_url:
-        database_url = 'postgresql://localhost/page_analyzer'
+        database_url = "postgresql://localhost/page_analyzer"
     conn = psycopg2.connect(database_url, cursor_factory=RealDictCursor)
     return conn
 
 
 # Улучшенная нормализация URL
 def normalize_url(url):
-    """Полная нормализация URL для сравнения"""
     url = url.strip()
-
-    # Добавляем схему если её нет
-    if not url.startswith(('http://', 'https://')):
-        url = 'http://' + url
-
-    # Парсим URL
     parsed = urlparse(url)
-
-    # Приводим домен к нижнему регистру
-    netloc = parsed.netloc.lower()
-
-    # Убираем www
-    if netloc.startswith('www.'):
-        netloc = netloc[4:]
-
-    # Собираем URL без порта (если порт стандартный)
-    # и без query параметров
-    path = parsed.path.rstrip('/')
-    if not path:
-        path = ''
-
-    normalized = f"{parsed.scheme}://{netloc}{path}"
-    normalized = normalized.lower()
-
-    return normalized
+    normalized = f"{parsed.scheme}://{parsed.netloc}"
+    return normalized.lower()
 
 
 # Валидация URL
 def validate_url(url):
     if not url or len(url) > 255:
-        return False, 'URL превышает 255 символов'
+        return False, "URL превышает 255 символов"
     if not validators.url(url):
-        return False, 'Некорректный URL'
-    return True, ''
+        return False, "Некорректный URL"
+    return True, ""
 
 
 # Функция для усечения длинного текста
 def truncate_text(text, max_length=200):
     if text and len(text) > max_length:
-        return text[:max_length] + '...'
+        return text[:max_length] + "..."
     return text
 
 
-@app.route('/')
+@app.route("/")
 def index():
-    return render_template('index.html')
+    return render_template("index.html")
 
 
-@app.route('/urls', methods=['GET'])
+@app.route("/urls", methods=["GET"])
 def urls_list():
     conn = get_db_connection()
     cur = conn.cursor()
@@ -103,44 +82,47 @@ def urls_list():
     cur.close()
     conn.close()
 
-    return render_template('urls.html', urls=urls)
+    return render_template("urls.html", urls=urls)
 
 
-@app.route('/urls/<int:id>')
+@app.route("/urls/<int:id>")
 def show_url(id):
     conn = get_db_connection()
     cur = conn.cursor()
 
-    cur.execute('SELECT id, name, created_at FROM urls WHERE id = %s', (id,))
+    cur.execute("SELECT id, name, created_at FROM urls WHERE id = %s", (id,))
     url = cur.fetchone()
 
     if not url:
         cur.close()
         conn.close()
-        flash('Страница не найдена', 'danger')
-        return redirect(url_for('index'))
+        flash("Страница не найдена", "danger")
+        return redirect(url_for("index"))
 
-    cur.execute("""
+    cur.execute(
+        """
         SELECT id, status_code, h1, title, description, created_at
         FROM url_checks
         WHERE url_id = %s
         ORDER BY created_at DESC
-    """, (id,))
+    """,
+        (id,),
+    )
     checks = cur.fetchall()
     cur.close()
     conn.close()
 
-    return render_template('show_url.html', url=url, checks=checks)
+    return render_template("show_url.html", url=url, checks=checks)
 
 
-@app.route('/urls', methods=['POST'])
+@app.route("/urls", methods=["POST"])
 def add_url():
-    url = request.form.get('url', '').strip()
+    url = request.form.get("url", "").strip()
 
     is_valid, error_message = validate_url(url)
     if not is_valid:
-        flash(error_message, 'danger')
-        return render_template('index.html'), 422
+        flash(error_message, "danger")
+        return render_template("index.html"), 422
 
     # Используем улучшенную нормализацию
     normalized_url = normalize_url(url)
@@ -150,67 +132,73 @@ def add_url():
 
     try:
         # Проверяем существование URL
-        cur.execute('SELECT id FROM urls WHERE name = %s', (normalized_url,))
+        cur.execute("SELECT id FROM urls WHERE name = %s", (normalized_url,))
         existing_url = cur.fetchone()
 
         if existing_url:
-            flash('Страница уже существует', 'info')  # Используем 'info' как ожидает тест
-            url_id = existing_url['id']
+            flash(
+                "Страница уже существует", "info"
+            )  # Используем 'info' как ожидает тест
+            url_id = existing_url["id"]
         else:
-            cur.execute('INSERT INTO urls (name, created_at) VALUES (%s, %s) RETURNING id',
-                        (normalized_url, datetime.now()))
+            cur.execute(
+                "INSERT INTO urls (name, created_at) VALUES (%s, %s) RETURNING id",
+                (normalized_url, datetime.now()),
+            )
             conn.commit()
             result = cur.fetchone()
-            url_id = result['id']
-            flash('Страница успешно добавлена', 'success')
+            url_id = result["id"]
+            flash("Страница успешно добавлена", "success")
 
         cur.close()
         conn.close()
-        return redirect(url_for('show_url', id=url_id))
+        return redirect(url_for("show_url", id=url_id))
 
     except Exception as e:
         print(f"ERROR in add_url: {e}")  # Логируем ошибку
         conn.rollback()
         cur.close()
         conn.close()
-        flash('Ошибка при добавлении страницы', 'danger')
-        return render_template('index.html'), 500
+        flash("Ошибка при добавлении страницы", "danger")
+        return render_template("index.html"), 500
 
 
-@app.route('/urls/<int:id>/checks', methods=['POST'])
+@app.route("/urls/<int:id>/checks", methods=["POST"])
 def check_url(id):
     conn = get_db_connection()
     cur = conn.cursor()
 
-    cur.execute('SELECT name FROM urls WHERE id = %s', (id,))
+    cur.execute("SELECT name FROM urls WHERE id = %s", (id,))
     url_data = cur.fetchone()
 
     if not url_data:
         cur.close()
         conn.close()
-        flash('Страница не найдена', 'danger')
-        return redirect(url_for('urls_list'))
+        flash("Страница не найдена", "danger")
+        return redirect(url_for("urls_list"))
 
-    url = url_data['name']
+    url = url_data["name"]
 
     try:
         response = requests.get(url, timeout=10)
 
         # Проверка на успешный ответ (код 200-399)
         if response.status_code >= 400:
-            flash('Произошла ошибка при проверке', 'danger')
-            return redirect(url_for('show_url', id=id))
+            flash("Произошла ошибка при проверке", "danger")
+            return redirect(url_for("show_url", id=id))
 
         # Определяем кодировку
-        response.encoding = response.apparent_encoding or 'utf-8'
+        response.encoding = response.apparent_encoding or "utf-8"
 
-        soup = BeautifulSoup(response.text, 'html.parser')
+        soup = BeautifulSoup(response.text, "html.parser")
 
         # Извлекаем данные
-        h1 = soup.find('h1').get_text(strip=True) if soup.find('h1') else ''
-        title = soup.find('title').get_text(strip=True) if soup.find('title') else ''
-        description_tag = soup.find('meta', attrs={'name': 'description'})
-        description = description_tag.get('content', '').strip() if description_tag else ''
+        h1 = soup.find("h1").get_text(strip=True) if soup.find("h1") else ""
+        title = soup.find("title").get_text(strip=True) if soup.find("title") else ""
+        description_tag = soup.find("meta", attrs={"name": "description"})
+        description = (
+            description_tag.get("content", "").strip() if description_tag else ""
+        )
 
         # Усекаем длинные значения
         h1 = truncate_text(h1, 200)
@@ -218,26 +206,29 @@ def check_url(id):
         description = truncate_text(description, 200)
 
         # Сохраняем проверку
-        cur.execute("""
+        cur.execute(
+            """
             INSERT INTO url_checks (url_id, status_code, h1, title, description, created_at)
             VALUES (%s, %s, %s, %s, %s, %s)
-        """, (id, response.status_code, h1, title, description, datetime.now()))
+        """,
+            (id, response.status_code, h1, title, description, datetime.now()),
+        )
 
         conn.commit()
-        flash('Страница успешно проверена', 'success')
+        flash("Страница успешно проверена", "success")
 
     except requests.exceptions.RequestException as e:
         print(f"Request error: {e}")  # Логируем ошибку
-        flash('Произошла ошибка при проверке', 'danger')
+        flash("Произошла ошибка при проверке", "danger")
     except Exception as e:
         print(f"Unexpected error: {e}")  # Логируем ошибку
-        flash('Произошла ошибка при проверке', 'danger')
+        flash("Произошла ошибка при проверке", "danger")
     finally:
         cur.close()
         conn.close()
 
-    return redirect(url_for('show_url', id=id))
+    return redirect(url_for("show_url", id=id))
 
 
 if __name__ == "__main__":
-    app.run(debug=True, host='0.0.0.0', port=8000)
+    app.run(debug=True, host="0.0.0.0", port=8000)
