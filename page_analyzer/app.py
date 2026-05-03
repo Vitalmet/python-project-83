@@ -21,13 +21,14 @@ def get_db_connection():
     database_url = os.getenv('DATABASE_URL')
     if not database_url:
         database_url = 'postgresql://localhost/page_analyzer'
-    print(f"Connecting to DB with: {database_url}")
     conn = psycopg2.connect(database_url, cursor_factory=RealDictCursor)
     return conn
 
 # нормализация URL (удаление trailing slash и приведение к нижнему регистру)
 def normalize_url(url):
-    url = url.rstrip('/')
+    url = url.strip()
+    if url.endswith('/'):
+        url = url.rstrip('/')
     url = url.lower()
     return url
 
