@@ -155,6 +155,7 @@ def check_url(id):
 
     try:
         response = requests.get(url, timeout=10)
+        response.raise_for_status()
         status_code = response.status_code
 
         soup = BeautifulSoup(response.text, 'html.parser')
@@ -175,9 +176,7 @@ def check_url(id):
 
         flash('Страница успешно проверена', 'success')
 
-    except requests.RequestException as e:
-        flash('Ошибка при проверке страницы', 'danger')
-    except Exception as e:
+    except (requests.RequestException, Exception) as e:
         flash('Произошла ошибка при проверке', 'danger')
     finally:
         cur.close()
