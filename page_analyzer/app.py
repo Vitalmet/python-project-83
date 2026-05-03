@@ -136,6 +136,7 @@ def add_url():
             result = cur.fetchone()
             url_id = result['id'] if result else None
             flash('Страница успешно добавлена', 'success')
+            conn.commit()
 
         cur.close()
         conn.close()
