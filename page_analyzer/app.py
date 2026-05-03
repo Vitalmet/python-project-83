@@ -20,7 +20,6 @@ app = Flask(__name__, template_folder=template_dir)
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "default-secret-key-for-dev")
 
 
-# функция для соединения с БД
 def get_db_connection():
     database_url = os.getenv("DATABASE_URL")
     if not database_url:
@@ -29,7 +28,6 @@ def get_db_connection():
     return conn
 
 
-# Улучшенная нормализация URL
 def normalize_url(url):
     url = url.strip()
     parsed = urlparse(url)
@@ -37,7 +35,6 @@ def normalize_url(url):
     return normalized.lower()
 
 
-# Валидация URL
 def validate_url(url):
     if not url or len(url) > 255:
         return False, "URL превышает 255 символов"
@@ -46,7 +43,6 @@ def validate_url(url):
     return True, ""
 
 
-# Функция для усечения длинного текста
 def truncate_text(text, max_length=200):
     if text and len(text) > max_length:
         return text[:max_length] + "..."
@@ -62,7 +58,6 @@ def index():
 def urls_list():
     conn = get_db_connection()
     cur = conn.cursor()
-
     cur.execute("""
         SELECT 
             u.id,
@@ -78,10 +73,8 @@ def urls_list():
         ORDER BY u.created_at DESC
     """)
     urls = cur.fetchall()
-
     cur.close()
     conn.close()
-
     return render_template("urls.html", urls=urls)
 
 
@@ -89,7 +82,6 @@ def urls_list():
 def show_url(id):
     conn = get_db_connection()
     cur = conn.cursor()
-
     cur.execute("SELECT id, name, created_at FROM urls WHERE id = %s", (id,))
     url = cur.fetchone()
 
@@ -99,63 +91,52 @@ def show_url(id):
         flash("Страница не найдена", "danger")
         return redirect(url_for("index"))
 
-    cur.execute(
-        """
+    cur.execute("""
         SELECT id, status_code, h1, title, description, created_at
         FROM url_checks
         WHERE url_id = %s
         ORDER BY created_at DESC
-    """,
-        (id,),
-    )
+    """, (id,))
     checks = cur.fetchall()
     cur.close()
     conn.close()
-
     return render_template("show_url.html", url=url, checks=checks)
 
 
 @app.route("/urls", methods=["POST"])
 def add_url():
     url = request.form.get("url", "").strip()
-
     is_valid, error_message = validate_url(url)
     if not is_valid:
         flash(error_message, "danger")
         return render_template("index.html"), 422
 
-    # Используем улучшенную нормализацию
     normalized_url = normalize_url(url)
-
     conn = get_db_connection()
     cur = conn.cursor()
 
     try:
-        # Проверяем существование URL
         cur.execute("SELECT id FROM urls WHERE name = %s", (normalized_url,))
         existing_url = cur.fetchone()
 
         if existing_url:
-            flash(
-                "Страница уже существует", "info"
-            )  # Используем 'info' как ожидает тест
+            flash("Страница уже существует", "info")
             url_id = existing_url["id"]
         else:
             cur.execute(
-                "INSERT INTO urls (name, created_at) VALUES (%s, %s) RETURNING id",
+                "INSERT INTO urls (name, created_at) VALUES (%s, %s) "
+                "RETURNING id",
                 (normalized_url, datetime.now()),
             )
             conn.commit()
-            result = cur.fetchone()
-            url_id = result["id"]
+            url_id = cur.fetchone()["id"]
             flash("Страница успешно добавлена", "success")
 
         cur.close()
         conn.close()
         return redirect(url_for("show_url", id=url_id))
-
     except Exception as e:
-        print(f"ERROR in add_url: {e}")  # Логируем ошибку
+        print(f"ERROR: {e}")
         conn.rollback()
         cur.close()
         conn.close()
@@ -167,7 +148,6 @@ def add_url():
 def check_url(id):
     conn = get_db_connection()
     cur = conn.cursor()
-
     cur.execute("SELECT name FROM urls WHERE id = %s", (id,))
     url_data = cur.fetchone()
 
@@ -177,51 +157,34 @@ def check_url(id):
         flash("Страница не найдена", "danger")
         return redirect(url_for("urls_list"))
 
-    url = url_data["name"]
-
     try:
-        response = requests.get(url, timeout=10)
+        response = requests.get(url_data["name"], timeout=10)
+        response.raise_for_status()
 
-        # Проверка на успешный ответ (код 200-399)
-        if response.status_code >= 400:
-            flash("Произошла ошибка при проверке", "danger")
-            return redirect(url_for("show_url", id=id))
-
-        # Определяем кодировку
         response.encoding = response.apparent_encoding or "utf-8"
-
         soup = BeautifulSoup(response.text, "html.parser")
 
-        # Извлекаем данные
         h1 = soup.find("h1").get_text(strip=True) if soup.find("h1") else ""
-        title = soup.find("title").get_text(strip=True) if soup.find("title") else ""
-        description_tag = soup.find("meta", attrs={"name": "description"})
-        description = (
-            description_tag.get("content", "").strip() if description_tag else ""
-        )
+        title_tag = soup.find("title")
+        title = title_tag.get_text(strip=True) if title_tag else ""
 
-        # Усекаем длинные значения
+        desc_tag = soup.find("meta", attrs={"name": "description"})
+        description = desc_tag.get("content", "").strip() if desc_tag else ""
+
         h1 = truncate_text(h1, 200)
         title = truncate_text(title, 200)
         description = truncate_text(description, 200)
 
-        # Сохраняем проверку
-        cur.execute(
-            """
-            INSERT INTO url_checks (url_id, status_code, h1, title, description, created_at)
+        cur.execute("""
+            INSERT INTO url_checks 
+            (url_id, status_code, h1, title, description, created_at)
             VALUES (%s, %s, %s, %s, %s, %s)
-        """,
-            (id, response.status_code, h1, title, description, datetime.now()),
-        )
-
+            """, (id, response.status_code, h1, title, description,
+                  datetime.now()))
         conn.commit()
         flash("Страница успешно проверена", "success")
-
-    except requests.exceptions.RequestException as e:
-        print(f"Request error: {e}")  # Логируем ошибку
-        flash("Произошла ошибка при проверке", "danger")
     except Exception as e:
-        print(f"Unexpected error: {e}")  # Логируем ошибку
+        print(f"Check error: {e}")
         flash("Произошла ошибка при проверке", "danger")
     finally:
         cur.close()
