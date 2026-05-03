@@ -105,6 +105,7 @@ def show_url(id):
 
     return render_template('show_url.html', url=url, checks=checks)
 
+
 @app.route('/urls', methods=['POST'])
 def add_url():
     url = request.form.get('url', '').strip()
@@ -121,10 +122,17 @@ def add_url():
     cur = conn.cursor()
 
     try:
+        # Диагностика: посмотрим, что есть в базе
+        cur.execute('SELECT id, name FROM urls')
+        all_urls = cur.fetchall()
+        print(f"DEBUG: All URLs in DB: {[u['name'] for u in all_urls]}")
+
         # При поиске проверяем оба варианта (слеш и без слеша)
         cur.execute('SELECT id FROM urls WHERE name = %s OR name = %s',
                     (normalized_url, normalized_url.rstrip('/')))
         existing_url = cur.fetchone()
+        print(f"DEBUG: Looking for '{normalized_url}' or '{normalized_url.rstrip('/')}'")
+        print(f"DEBUG: Found: {existing_url}")
 
         if existing_url:
             flash('Страница уже существует', 'info')
@@ -132,6 +140,7 @@ def add_url():
         else:
             # сохраняем без слеша
             save_url = normalized_url.rstrip('/')
+            print(f"DEBUG: Saving new URL: {save_url}")
             cur.execute('INSERT INTO urls (name, created_at) VALUES (%s, %s) RETURNING id',
                         (save_url, datetime.now()))
             conn.commit()
@@ -144,6 +153,7 @@ def add_url():
         return redirect(url_for('show_url', id=url_id))
 
     except Exception as e:
+        print(f"DEBUG ERROR: {e}")
         conn.rollback()
         cur.close()
         conn.close()
