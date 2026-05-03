@@ -1,0 +1,68 @@
+{% extends "layout.html" %}
+
+{% block title %}Сайт: {{ url.name }}{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Сайт: {{ url.name }}</h1>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <table class="table table-bordered" data-test="url">
+            <tbody>
+                <tr>
+                    <th style="width: 200px;">ID</th>
+                    <td>{{ url.id }}</td>
+                </tr>
+                <tr>
+                    <th>Имя</th>
+                    <td>{{ url.name }}</td>
+                </tr>
+                <tr>
+                    <th>Дата создания</th>
+                    <td>{{ url.created_at.strftime('%Y-%m-%d') if url.created_at else '' }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<h2 class="mb-3">Проверки</h2>
+<form action="{{ url_for('check_url', id=url.id) }}" method="post" class="mb-3">
+    <button type="submit" class="btn btn-primary">Запустить проверку</button>
+</form>
+
+<div class="table-responsive">
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Код ответа</th>
+                <th>h1</th>
+                <th>title</th>
+                <th>description</th>
+                <th>Дата создания</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for check in checks %}
+            <tr>
+                <td>{{ check.id }}</td>
+                <td>{{ check.status_code if check.status_code else '' }}</td>
+                <td>{{ check.h1 if check.h1 else '' }}</td>
+                <td>{{ check.title if check.title else '' }}</td>
+                <td>{{ check.description if check.description else '' }}</td>
+                <td>{{ check.created_at.strftime('%Y-%m-%d %H:%M:%S') if check.created_at else '' }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" class="text-center">Нет проверок</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="mt-4">
+    <a href="{{ url_for('urls_list') }}" class="btn btn-secondary">Назад к списку</a>
+</div>
+{% endblock %}

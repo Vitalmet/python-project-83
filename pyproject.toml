@@ -8,6 +8,10 @@ dependencies = [
    "flask>=3.0.0",
    "gunicorn>=21.0.0",
    "python-dotenv>=1.2.2",
+   "psycopg2-binary>=2.9.0",
+   "validators>=0.28.0",
+   "requests>=2.31.0",
+   "beautifulsoup4>=4.12.0",
 ]
 
 
