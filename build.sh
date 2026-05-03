@@ -7,10 +7,4 @@ source $HOME/.local/bin/env
 # Установка зависимостей
 uv sync
 
-# Создание таблиц в базе данных
-if [ -n "$DATABASE_URL" ]; then
-    psql -a -d $DATABASE_URL -f database.sql
-else
-    echo "DATABASE_URL is not set"
-    exit 1
-fi
+echo "Build completed!"
