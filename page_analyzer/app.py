@@ -26,10 +26,8 @@ def get_db_connection():
 
 # нормализация URL (удаление trailing slash и приведение к нижнему регистру)
 def normalize_url(url):
-    url = url.strip()
-    if url.endswith('/'):
-        url = url.rstrip('/')
-    url = url.lower()
+    # Удаляем пробелы и trailing slash
+    url = url.strip().rstrip('/').lower()
     return url
 
 # Валидация URL

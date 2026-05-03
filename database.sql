@@ -1,6 +1,3 @@
--- Очистка таблиц перед созданием (для тестов)
-TRUNCATE urls, url_checks RESTART IDENTITY CASCADE;
-
 -- Создание таблицы urls
 CREATE TABLE IF NOT EXISTS urls (
     id SERIAL PRIMARY KEY,
