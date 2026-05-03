@@ -168,6 +168,7 @@ def check_url(id):
     try:
         response = requests.get(url, timeout=10)
         response.raise_for_status()
+        response.encoding = 'utf-8'
         status_code = response.status_code
 
         soup = BeautifulSoup(response.text, 'html.parser')
