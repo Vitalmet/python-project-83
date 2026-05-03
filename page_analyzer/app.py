@@ -39,6 +39,12 @@ def validate_url(url):
         return False, 'Некорректный URL'
     return True, ''
 
+# Функция для усечения длинного текста
+def truncate_text(text, max_length=200):
+    if text and len(text) > max_length:
+        return text[:max_length] + '...'
+    return text
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -165,6 +171,11 @@ def check_url(id):
 
         description_tag = soup.find('meta', attrs={'name': 'description'})
         description = description_tag.get('content', '').strip() if description_tag else ''
+
+        # Усечение длинных значений
+        h1 = truncate_text(h1, 200)
+        title = truncate_text(title, 200)
+        description = truncate_text(description, 200)
 
         cur.execute("""
             INSERT INTO url_checks (url_id, status_code, h1, title, description, created_at)
