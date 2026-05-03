@@ -16,6 +16,7 @@ template_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'te
 app = Flask(__name__, template_folder=template_dir)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'default-secret-key-for-dev')
 
+# CLEAR CACHE - force rebuild 2026-05-03 09:45
 # функция для соединения с БД
 def get_db_connection():
     database_url = os.getenv('DATABASE_URL')
