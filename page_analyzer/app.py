@@ -114,22 +114,26 @@ def add_url():
         flash(error_message, 'danger')
         return render_template('index.html'), 422
 
-    normalized_url = normalize_url(url)
+    # Нормализация: только нижний регистр
+    normalized_url = url.lower()
 
     conn = get_db_connection()
     cur = conn.cursor()
 
     try:
-        cur.execute('SELECT id FROM urls WHERE name = %s', (normalized_url,))
+        # При поиске проверяем оба варианта (слеш и без слеша)
+        cur.execute('SELECT id FROM urls WHERE name = %s OR name = %s',
+                    (normalized_url, normalized_url.rstrip('/')))
         existing_url = cur.fetchone()
 
         if existing_url:
             flash('Страница уже существует', 'info')
             url_id = existing_url['id']
         else:
+            # сохраняем без слеша
+            save_url = normalized_url.rstrip('/')
             cur.execute('INSERT INTO urls (name, created_at) VALUES (%s, %s) RETURNING id',
-                        (normalized_url, datetime.now())
-            )
+                        (save_url, datetime.now()))
             conn.commit()
             result = cur.fetchone()
             url_id = result['id'] if result else None
@@ -137,7 +141,6 @@ def add_url():
 
         cur.close()
         conn.close()
-
         return redirect(url_for('show_url', id=url_id))
 
     except Exception as e:
