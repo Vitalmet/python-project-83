@@ -91,12 +91,15 @@ def show_url(id):
         flash("Страница не найдена", "danger")
         return redirect(url_for("index"))
 
-    cur.execute("""
+    cur.execute(
+        """
         SELECT id, status_code, h1, title, description, created_at
         FROM url_checks
         WHERE url_id = %s
         ORDER BY created_at DESC
-    """, (id,))
+    """,
+        (id,),
+    )
     checks = cur.fetchall()
     cur.close()
     conn.close()
@@ -124,8 +127,7 @@ def add_url():
             url_id = existing_url["id"]
         else:
             cur.execute(
-                "INSERT INTO urls (name, created_at) VALUES (%s, %s) "
-                "RETURNING id",
+                "INSERT INTO urls (name, created_at) VALUES (%s, %s) RETURNING id",
                 (normalized_url, datetime.now()),
             )
             conn.commit()
@@ -175,12 +177,14 @@ def check_url(id):
         title = truncate_text(title, 200)
         description = truncate_text(description, 200)
 
-        cur.execute("""
+        cur.execute(
+            """
             INSERT INTO url_checks 
             (url_id, status_code, h1, title, description, created_at)
             VALUES (%s, %s, %s, %s, %s, %s)
-            """, (id, response.status_code, h1, title, description,
-                  datetime.now()))
+            """,
+            (id, response.status_code, h1, title, description, datetime.now()),
+        )
         conn.commit()
         flash("Страница успешно проверена", "success")
     except Exception as e:
