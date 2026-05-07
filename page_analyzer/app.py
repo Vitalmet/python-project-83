@@ -127,7 +127,10 @@ def add_url():
             url_id = existing_url["id"]
         else:
             cur.execute(
-                "INSERT INTO urls (name, created_at) VALUES (%s, %s) RETURNING id",
+                """
+                INSERT INTO urls (name, created_at)
+                VALUES (%s, %s) RETURNING id
+                """,
                 (normalized_url, datetime.now()),
             )
             conn.commit()
