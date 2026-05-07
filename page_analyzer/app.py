@@ -77,7 +77,6 @@ def urls_list():
     conn.close()
     return render_template("urls.html", urls=urls)
 
-
 @app.route("/urls/<int:id>")
 def show_url(id):
     conn = get_db_connection()
