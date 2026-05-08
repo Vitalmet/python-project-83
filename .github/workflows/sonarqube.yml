@@ -35,6 +35,6 @@ jobs:
           args: >
               -Dsonar.host.url=https://sonarcloud.io
               -Dsonar.projectKey=v1catalyst_my-the-project-83
-              -Dsonar.organization=v1catalyst
+              -Dsonar.organization=Vitali
               -Dsonar.sources=page_analyzer
               -Dsonar.exclusions=**/__pycache__/**,hexlet_code/**,templates/**
