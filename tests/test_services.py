@@ -1,4 +1,13 @@
-from page_analyzer.services import normalize_url, truncate_text, validate_url
+from unittest.mock import MagicMock, patch
+
+import requests
+
+from page_analyzer.services import (
+    fetch_page_data,
+    normalize_url,
+    truncate_text,
+    validate_url,
+)
 
 
 class TestNormalizeUrl:
@@ -64,3 +73,52 @@ class TestTruncateText:
     def test_custom_max_length(self):
         result = truncate_text("hello world", max_length=5)
         assert result == "hello..."
+
+
+class TestFetchPageData:
+    @patch("page_analyzer.services.requests.get")
+    def test_fetch_page_data_parses_html(self, mock_get):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.apparent_encoding = "utf-8"
+        mock_response.text = """
+        <html>
+        <head><title>Test Title</title></head>
+        <body>
+            <h1>Test Heading</h1>
+            <meta name="description" content="Test description">
+        </body>
+        </html>
+        """
+        mock_get.return_value = mock_response
+
+        result = fetch_page_data("https://example.com")
+
+        assert result["status_code"] == 200
+        assert result["h1"] == "Test Heading"
+        assert result["title"] == "Test Title"
+        assert result["description"] == "Test description"
+
+    @patch("page_analyzer.services.requests.get")
+    def test_fetch_page_data_missing_elements(self, mock_get):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.apparent_encoding = "utf-8"
+        mock_response.text = "<html><body>No SEO tags here</body></html>"
+        mock_get.return_value = mock_response
+
+        result = fetch_page_data("https://example.com")
+
+        assert result["status_code"] == 200
+        assert result["h1"] == ""
+        assert result["title"] == ""
+        assert result["description"] == ""
+
+    @patch("page_analyzer.services.requests.get")
+    def test_fetch_page_data_http_error(self, mock_get):
+        mock_get.side_effect = requests.ConnectionError("Connection refused")
+
+        import pytest
+
+        with pytest.raises(requests.ConnectionError):
+            fetch_page_data("https://unreachable.example.com")
