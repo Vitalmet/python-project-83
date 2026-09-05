@@ -1,5 +1,5 @@
+import logging
 import os
-import traceback
 
 from flask import Flask, Response, render_template
 from flask_wtf.csrf import CSRFProtect
@@ -8,6 +8,8 @@ from page_analyzer.config import Config
 from page_analyzer.db import get_db_connection
 from page_analyzer.extensions import limiter
 from page_analyzer.routes import bp
+
+logger = logging.getLogger(__name__)
 
 template_dir = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..', 'templates')
@@ -44,10 +46,10 @@ def init_db() -> None:
         with conn.cursor() as cur:
             cur.execute(SCHEMA_SQL)
         conn.commit()
-        print("Database tables initialized", flush=True)
+        logger.info('Database tables initialized')
         conn.close()
-    except Exception as e:
-        print(f"Database init error: {e}", flush=True)
+    except Exception:
+        logger.exception('Database init failed')
 
 
 def create_app() -> Flask:
@@ -75,8 +77,7 @@ def create_app() -> Flask:
 
     @app.errorhandler(500)
     def internal_error(error: Exception) -> tuple[str, int]:
-        print('=== 500 ERROR ===', flush=True)
-        traceback.print_exc()
+        logger.exception('Internal server error')
         return render_template('500.html'), 500
 
     return app
