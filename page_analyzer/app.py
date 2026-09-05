@@ -5,6 +5,7 @@ from flask import Flask, Response, render_template
 from flask_wtf.csrf import CSRFProtect
 
 from page_analyzer.config import Config
+from page_analyzer.db import get_db_connection
 from page_analyzer.extensions import limiter
 from page_analyzer.routes import bp
 
@@ -14,6 +15,40 @@ template_dir = os.path.abspath(
 
 csrf = CSRFProtect()
 
+SCHEMA_SQL = """
+CREATE TABLE IF NOT EXISTS urls (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL UNIQUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS url_checks (
+    id SERIAL PRIMARY KEY,
+    url_id INTEGER REFERENCES urls(id) ON DELETE CASCADE,
+    status_code INTEGER,
+    h1 TEXT,
+    title TEXT,
+    description TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_urls_name ON urls (name);
+CREATE INDEX IF NOT EXISTS idx_urls_created_at ON urls (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_checks_url_id_created ON url_checks (url_id, created_at DESC);
+"""
+
+
+def init_db() -> None:
+    try:
+        conn = get_db_connection()
+        with conn.cursor() as cur:
+            cur.execute(SCHEMA_SQL)
+        conn.commit()
+        print("Database tables initialized", flush=True)
+        conn.close()
+    except Exception as e:
+        print(f"Database init error: {e}", flush=True)
+
 
 def create_app() -> Flask:
     app = Flask(__name__, template_folder=template_dir)
@@ -21,6 +56,8 @@ def create_app() -> Flask:
 
     csrf.init_app(app)
     limiter.init_app(app)
+
+    init_db()
 
     app.register_blueprint(bp)
 
