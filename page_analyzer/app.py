@@ -1,3 +1,4 @@
+# коментарий для пробного коммта и пуша
 import logging
 import os
 
