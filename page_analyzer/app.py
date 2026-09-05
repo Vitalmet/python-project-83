@@ -41,6 +41,7 @@ def create_app() -> Flask:
 
     @app.errorhandler(500)
     def internal_error(error: Exception) -> tuple[str, int]:
+        app.logger.exception("Internal server error: %s", error)
         return render_template("500.html"), 500
 
     return app
