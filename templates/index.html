@@ -8,7 +8,8 @@
         <h1 class="display-4 mb-4">Анализатор страниц</h1>
         <p class="lead mb-4">Бесплатно проверяйте сайты на SEO-пригодность</p>
 
-        <form action="{{ url_for('add_url') }}" method="post" class="mb-4">
+        <form action="{{ url_for('main.add_url') }}" method="post" class="mb-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="input-group mb-3">
                 <input type="url"
                        name="url"

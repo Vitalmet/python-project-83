@@ -27,7 +27,8 @@
 </div>
 
 <h2 class="mb-3">Проверки</h2>
-<form action="{{ url_for('check_url', id=url.id) }}" method="post" class="mb-3">
+<form action="{{ url_for('main.check_url', url_id=url.id) }}" method="post" class="mb-3">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <button type="submit" class="btn btn-primary">Запустить проверку</button>
 </form>
 
@@ -63,6 +64,6 @@
 </div>
 
 <div class="mt-4">
-    <a href="{{ url_for('urls_list') }}" class="btn btn-secondary">Назад к списку</a>
+    <a href="{{ url_for('main.urls_list') }}" class="btn btn-secondary">Назад к списку</a>
 </div>
 {% endblock %}

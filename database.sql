@@ -22,5 +22,5 @@ CREATE TABLE url_checks (
 
 -- Создание индексов
 CREATE INDEX idx_urls_name ON urls (name);
-CREATE INDEX idx_checks_url_id ON url_checks (url_id);
-CREATE INDEX idx_checks_created_at ON url_checks (created_at DESC);
+CREATE INDEX idx_urls_created_at ON urls (created_at DESC);
+CREATE INDEX idx_checks_url_id_created ON url_checks (url_id, created_at DESC);
